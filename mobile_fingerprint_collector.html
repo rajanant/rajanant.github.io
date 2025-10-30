@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Fingerprint Collector</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .status {
+            padding: 20px;
+            text-align: center;
+            font-size: 16px;
+            color: #667eea;
+            background: #f7f7f7;
+        }
+
+        .status.collecting {
+            color: #f59e0b;
+        }
+
+        .status.success {
+            color: #10b981;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            flex: 1;
+            padding: 15px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: white;
+        }
+
+        .copy-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .copy-btn:active {
+            transform: scale(0.95);
+        }
+
+        .copy-btn.copied {
+            background: #10b981;
+        }
+
+        .download-btn {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+
+        .download-btn:active {
+            transform: scale(0.95);
+        }
+
+        .json-container {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            max-height: 500px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .summary {
+            background: #f7f7f7;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .summary h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .summary-item:last-child {
+            border-bottom: none;
+        }
+
+        .summary-label {
+            font-weight: 600;
+            color: #64748b;
+        }
+
+        .summary-value {
+            color: #1e293b;
+            text-align: right;
+            max-width: 60%;
+            word-wrap: break-word;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #94a3b8;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📱 Mobile Fingerprint Collector</h1>
+            <p>Збір характеристик браузера та пристрою</p>
+        </div>
+
+        <div class="status" id="status">
+            <div class="spinner"></div>
+            <div>Збір даних...</div>
+        </div>
+
+        <div class="content" id="content" style="display: none;">
+            <div class="summary" id="summary"></div>
+
+            <div class="button-group">
+                <button class="copy-btn" id="copyBtn" onclick="copyToClipboard()">
+                    📋 Копіювати JSON
+                </button>
+                <button class="download-btn" onclick="downloadJSON()">
+                    💾 Завантажити
+                </button>
+            </div>
+
+            <div class="json-container" id="jsonOutput"></div>
+        </div>
+
+        <div class="footer">
+            Всі дані обробляються локально в браузері
+        </div>
+    </div>
+
+    <script>
+        let fingerprintData = {};
+
+        async function collectFingerprint() {
+            const data = {
+                timestamp: new Date().toISOString(),
+                navigator: {},
+                screen: {},
+                performance: {},
+                other: {}
+            };
+
+            // Navigator properties
+            data.navigator.userAgent = navigator.userAgent;
+            data.navigator.webdriver = navigator.webdriver;
+            data.navigator.platform = navigator.platform;
+            data.navigator.language = navigator.language;
+            data.navigator.languages = navigator.languages;
+            data.navigator.vendor = navigator.vendor;
+            data.navigator.product = navigator.product;
+            data.navigator.appName = navigator.appName;
+            data.navigator.appVersion = navigator.appVersion;
+            data.navigator.appCodeName = navigator.appCodeName;
+            data.navigator.productSub = navigator.productSub;
+            data.navigator.deviceMemory = navigator.deviceMemory;
+            data.navigator.hardwareConcurrency = navigator.hardwareConcurrency;
+            data.navigator.maxTouchPoints = navigator.maxTouchPoints;
+            data.navigator.cookieEnabled = navigator.cookieEnabled;
+            data.navigator.onLine = navigator.onLine;
+            data.navigator.doNotTrack = navigator.doNotTrack;
+            data.navigator.sendBeaconAvailable = typeof navigator.sendBeacon === 'function';
+
+            // User Agent Client Hints
+            if ('userAgentData' in navigator) {
+                const uaData = navigator.userAgentData;
+                const base = uaData?.toJSON ? uaData.toJSON() : {};
+                try {
+                    const high = await uaData.getHighEntropyValues([
+                        'architecture', 'bitness', 'model', 'platform',
+                        'platformVersion', 'uaFullVersion', 'fullVersionList'
+                    ]);
+                    data.navigator.userAgentData = {
+                        supported: true,
+                        base: base,
+                        high: high
+                    };
+                } catch (e) {
+                    data.navigator.userAgentData = {
+                        supported: true,
+                        base: base,
+                        error: e.message
+                    };
+                }
+            } else {
+                data.navigator.userAgentData = { supported: false };
+            }
+
+            // Connection
+            const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection || {};
+            data.navigator.connection = {
+                downlink: conn.downlink,
+                effectiveType: conn.effectiveType,
+                rtt: conn.rtt,
+                saveData: conn.saveData,
+                type: conn.type
+            };
+
+            // Media Devices
+            try {
+                if (navigator.mediaDevices && typeof navigator.mediaDevices.enumerateDevices === 'function') {
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    data.mediaDevices = {
+                        supported: true,
+                        devices: devices.map(d => ({
+                            kind: d.kind,
+                            label: d.label || '',
+                            deviceId: d.deviceId || '',
+                            groupId: d.groupId || ''
+                        }))
+                    };
+                } else {
+                    data.mediaDevices = { supported: false };
+                }
+            } catch (e) {
+                data.mediaDevices = { supported: false, error: e.message };
+            }
+
+            // Plugins
+            data.navigator.plugins = Array.from(navigator.plugins).map(p => ({
+                name: p.name,
+                filename: p.filename,
+                description: p.description,
+                length: p.length
+            }));
+
+            // MIME types
+            data.navigator.mimeTypes = Array.from(navigator.mimeTypes).map(m => ({
+                type: m.type,
+                description: m.description,
+                suffixes: m.suffixes,
+                enabledPlugin: m.enabledPlugin ? m.enabledPlugin.name : null
+            }));
+
+            // Screen
+            data.screen.width = screen.width;
+            data.screen.height = screen.height;
+            data.screen.availWidth = screen.availWidth;
+            data.screen.availHeight = screen.availHeight;
+            data.screen.availLeft = screen.availLeft;
+            data.screen.availTop = screen.availTop;
+            data.screen.colorDepth = screen.colorDepth;
+            data.screen.pixelDepth = screen.pixelDepth;
+            data.screen.orientation = {
+                type: screen.orientation?.type,
+                angle: screen.orientation?.angle
+            };
+
+            // Performance
+            data.performance.timeOrigin = performance.timeOrigin;
+            if (performance.memory) {
+                data.performance.memory = {
+                    jsHeapSizeLimit: performance.memory.jsHeapSizeLimit,
+                    totalJSHeapSize: performance.memory.totalJSHeapSize,
+                    usedJSHeapSize: performance.memory.usedJSHeapSize
+                };
+            } else {
+                data.performance.memory = null;
+            }
+
+            // Navigation
+            if (performance.navigation) {
+                data.navigation = {
+                    type: performance.navigation.type,
+                    redirectCount: performance.navigation.redirectCount
+                };
+            } else {
+                data.navigation = null;
+            }
+
+            // Other
+            data.other.timezoneOffset = new Date().getTimezoneOffset();
+            data.other.devicePixelRatio = window.devicePixelRatio;
+
+            return data;
+        }
+
+        function createSummary(data) {
+            const items = [
+                { label: 'User-Agent', value: data.navigator.userAgent?.substring(0, 50) + '...' || 'N/A' },
+                { label: 'Platform', value: data.navigator.platform || 'N/A' },
+                { label: 'Languages', value: data.navigator.languages?.join(', ') || 'N/A' },
+                { label: 'Screen', value: `${data.screen.width}x${data.screen.height}` },
+                { label: 'Device Pixel Ratio', value: data.other.devicePixelRatio || 'N/A' },
+                { label: 'Hardware Cores', value: data.navigator.hardwareConcurrency || 'N/A' },
+                { label: 'Device Memory', value: data.navigator.deviceMemory ? `${data.navigator.deviceMemory} GB` : 'N/A' },
+                { label: 'Touch Points', value: data.navigator.maxTouchPoints || 'N/A' },
+                { label: 'Orientation', value: data.screen.orientation?.type || 'N/A' },
+                { label: 'Connection', value: data.navigator.connection?.effectiveType || 'N/A' }
+            ];
+
+            const summaryHTML = `
+                <h2>📊 Коротка інформація</h2>
+                ${items.map(item => `
+                    <div class="summary-item">
+                        <span class="summary-label">${item.label}:</span>
+                        <span class="summary-value">${item.value}</span>
+                    </div>
+                `).join('')}
+            `;
+
+            document.getElementById('summary').innerHTML = summaryHTML;
+        }
+
+        function displayFingerprint(data) {
+            fingerprintData = data;
+
+            // Update status
+            const statusEl = document.getElementById('status');
+            statusEl.className = 'status success';
+            statusEl.innerHTML = '✅ Дані успішно зібрані!';
+
+            // Show content
+            document.getElementById('content').style.display = 'block';
+
+            // Create summary
+            createSummary(data);
+
+            // Display JSON
+            document.getElementById('jsonOutput').textContent = JSON.stringify(data, null, 2);
+        }
+
+        async function copyToClipboard() {
+            const jsonText = JSON.stringify(fingerprintData, null, 2);
+            const btn = document.getElementById('copyBtn');
+
+            try {
+                await navigator.clipboard.writeText(jsonText);
+                btn.textContent = '✅ Скопійовано!';
+                btn.classList.add('copied');
+
+                setTimeout(() => {
+                    btn.textContent = '📋 Копіювати JSON';
+                    btn.classList.remove('copied');
+                }, 2000);
+            } catch (err) {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = jsonText;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                document.body.appendChild(textArea);
+                textArea.select();
+
+                try {
+                    document.execCommand('copy');
+                    btn.textContent = '✅ Скопійовано!';
+                    btn.classList.add('copied');
+
+                    setTimeout(() => {
+                        btn.textContent = '📋 Копіювати JSON';
+                        btn.classList.remove('copied');
+                    }, 2000);
+                } catch (err2) {
+                    alert('Помилка копіювання: ' + err2);
+                }
+
+                document.body.removeChild(textArea);
+            }
+        }
+
+        function downloadJSON() {
+            const jsonText = JSON.stringify(fingerprintData, null, 2);
+            const blob = new Blob([jsonText], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `fingerprint-${Date.now()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Start collecting on page load
+        window.addEventListener('load', async () => {
+            // Small delay to ensure everything is loaded
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            try {
+                const data = await collectFingerprint();
+                displayFingerprint(data);
+            } catch (error) {
+                const statusEl = document.getElementById('status');
+                statusEl.className = 'status';
+                statusEl.innerHTML = '❌ Помилка збору даних: ' + error.message;
+                console.error('Error collecting fingerprint:', error);
+            }
+        });
+    </script>
+</body>
+</html>
