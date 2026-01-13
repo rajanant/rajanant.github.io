@@ -1,0 +1,14 @@
+{
+  "client_id": "https://rajanant.github.io/my-chat-app/client.json",
+  "client_name": "My Custom Chat App",
+  "client_uri": "https://github.com/rajanant/my-chat-app",
+  "logo_uri": "https://rajanant.github.io/my-chat-app/logo.png",
+  "redirect_uris": [
+    "http://localhost:3000/api/mcp/callback",
+    "https://your-production-app.com/api/mcp/callback"
+  ],
+  "scope": "mcp:connect",
+  "grant_types": ["authorization_code"],
+  "response_types": ["code"],
+  "token_endpoint_auth_method": "none"
+}
